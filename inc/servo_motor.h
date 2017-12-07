@@ -21,6 +21,13 @@
 
 int servo_motor_init(void);
 int servo_motor_fini(void);
+
+/*
+ * You Must adjust servo motor before using.
+ * recommanded center value is 450
+ * for left turn, set less then center value(e.g. 400),
+ * for right turn, set more then center value(e.g. 500)
+ */
 int servo_motor_value_set(int motor_id, int value);
 
 #endif /* __CAR_APP_SERVO_MOTOR_H__ */
