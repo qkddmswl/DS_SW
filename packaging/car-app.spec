@@ -52,7 +52,6 @@ cmake . -DP_NAME=%{P_NAME} \
 	-DORG_PREFIX=%{ORG_PREFIX} \
 	-DAPP_LABEL=%{APP_LABEL} \
 	-DINSTALL_PREFIX=%{_pkg_dir} \
-	-DINSTALL_RESDIR=%{_pkg_res_dir} \
 	-DSYS_ICONS_DIR=%{_sys_icons_dir} \
 	-DSYS_PACKAGES_DIR=%{_sys_packages_dir} \
 
