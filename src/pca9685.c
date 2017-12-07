@@ -49,6 +49,7 @@
 #define OUTDRV             0x04
 
 static peripheral_i2c_h g_i2c_h = NULL;
+static unsigned int ref_count = 0;
 
 int pca9685_set_frequency(unsigned int freq_hz)
 {
@@ -137,8 +138,14 @@ int pca9685_set_value_to_all(int on, int off)
 int pca9685_init(void)
 {
 	uint8_t mode1 = 0;
-
 	int ret = PERIPHERAL_ERROR_NONE;
+
+	if (g_i2c_h) {
+		ref_count++;
+		_D("Already initialized - ref_count[%u]\n", ref_count);
+		return 0;
+	}
+
 	ret = peripheral_i2c_open(RPI3_I2C_BUS, PCA9685_ADDRESS, &g_i2c_h);
 	if (ret != PERIPHERAL_ERROR_NONE) {
 		_E("failed to open pca9685-[bus:%d, addr:%d]",
@@ -165,12 +172,27 @@ int pca9685_init(void)
 
 	usleep(500); // wait for oscillator
 
+	ret = pca9685_set_frequency(60);
+	if (ret) {
+		_E("failed to set frequency");
+		peripheral_i2c_close(g_i2c_h);
+		g_i2c_h = NULL;
+		return -1;
+	}
+	ref_count++;
+
 	return 0;
 }
 
 int pca9685_fini(void)
 {
+	ref_count--;
+
+	_D("ref count - %u", ref_count);
+
 	if (g_i2c_h) {
+		_D("finalizing pca9685");
+		pca9685_set_value_to_all(0, 0);
 		peripheral_i2c_close(g_i2c_h);
 		g_i2c_h = NULL;
 	}
