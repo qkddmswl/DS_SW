@@ -27,6 +27,8 @@ int servo_motor_init(void)
 		_E("failed to init PCA9685");
 		return -1;
 	}
+
+	return 0;
 }
 
 int servo_motor_fini(void)
