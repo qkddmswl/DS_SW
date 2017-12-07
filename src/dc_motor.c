@@ -160,12 +160,6 @@ static int pins_init(void)
 		return -1;
 	}
 
-	ret = pca9685_set_frequency(60);
-	if (ret) {
-		_E("failed to set frequency to PCA9685");
-		goto ERROR;
-	}
-
 	/* open pins for Motor A */
 	ret = peripheral_gpio_open(MotorA_1, &motorA_1_h);
 	if (ret == PERIPHERAL_ERROR_NONE)
