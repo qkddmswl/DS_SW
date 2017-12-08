@@ -22,15 +22,22 @@
 #include <service_app.h>
 #include "log.h"
 #include "dc_motor.h"
+#include "resource.h"
+
+enum {
+	DIR_STATE_S,
+	DIR_STATE_F,
+	DIR_STATE_B,
+};
 
 typedef struct app_data_s {
-	guint timer_id;
+	unsigned int f_value;
+	unsigned int r_value;
+	unsigned int dir_state;
 } app_data;
 
-static void service_app_control(app_control_h app_control, void *data)
-{
-	return;
-}
+#define FRONT_PIN 21
+#define REAR_PIN 4
 
 static void service_app_lang_changed(app_event_info_h event_info, void *user_data)
 {
@@ -52,64 +59,113 @@ static void service_app_low_memory(app_event_info_h event_info, void *user_data)
 	return;
 }
 
-static inline int __get_r_val(int val)
+static void ___________control_motor(app_data *ad)
 {
-	if (val > 0)
-		return 0 - val;
-	else
-		return ABS(val);
+	_D("control motor, state(%u), f_val(%u), r_val(%u)",
+			ad->dir_state, ad->f_value, ad->r_value);
+
+
+	switch (ad->dir_state) {
+		case DIR_STATE_F:
+			if (ad->f_value)  {
+				if (ad->r_value) {
+					ad->dir_state = DIR_STATE_S;
+					dc_motor_speed_set(DC_MOTOR_ID_L, 0);
+					dc_motor_speed_set(DC_MOTOR_ID_R, 0);
+				} else {
+					ad->dir_state = DIR_STATE_B;
+					dc_motor_speed_set(DC_MOTOR_ID_L, -2000);
+					dc_motor_speed_set(DC_MOTOR_ID_R, -2000);
+				}
+			}
+			break;
+		case DIR_STATE_B:
+			if (ad->r_value)  {
+				if (ad->f_value) {
+					ad->dir_state = DIR_STATE_S;
+					dc_motor_speed_set(DC_MOTOR_ID_L, 0);
+					dc_motor_speed_set(DC_MOTOR_ID_R, 0);
+				} else {
+					ad->dir_state = DIR_STATE_F;
+					dc_motor_speed_set(DC_MOTOR_ID_L, 2000);
+					dc_motor_speed_set(DC_MOTOR_ID_R, 2000);
+				}
+			}
+			break;
+		case DIR_STATE_S:
+			if (!ad->f_value)  {
+				ad->dir_state = DIR_STATE_F;
+				dc_motor_speed_set(DC_MOTOR_ID_L, 2000);
+				dc_motor_speed_set(DC_MOTOR_ID_R, 2000);
+			} else if (!ad->r_value) {
+				ad->dir_state = DIR_STATE_B;
+				dc_motor_speed_set(DC_MOTOR_ID_L, -2000);
+				dc_motor_speed_set(DC_MOTOR_ID_R, -2000);
+			}
+			break;
+	}
+
+	return;
 }
 
-static gboolean __control_dcmotor_cb(gpointer user_data)
+static void _front_ioa_sensor_changed_cb(unsigned int value, void *data)
 {
-	static int value = -2000;
-	int value2 = 0;
+	app_data *ad = data;
 
-	value = __get_r_val(value);
+	_D("FRONT has obstacle!");
 
-	dc_motor_speed_set(DC_MOTOR_ID_L, 0);
-	dc_motor_speed_set(DC_MOTOR_ID_R, 0);
+	ad->f_value = value;
 
-	sleep(1);
+	___________control_motor(ad);
 
-	dc_motor_speed_set(DC_MOTOR_ID_L, value);
-	dc_motor_speed_set(DC_MOTOR_ID_R, value);
+	return;
+}
 
-	sleep(5);
-	if (value > 0)
-		value2 = value + 1000;
-	else
-		value2 = value - 1000;
+static void _back_ioa_sensor_changed_cb(unsigned int value, void *data)
+{
+	app_data *ad = data;
 
-	dc_motor_speed_set(DC_MOTOR_ID_L, value2);
-	dc_motor_speed_set(DC_MOTOR_ID_R, value2);
+	_D("BACK has obstacle!");
 
-	return G_SOURCE_CONTINUE;
+	ad->r_value = value;
+
+	___________control_motor(ad);
+
+	return;
 }
 
 static bool service_app_create(void *data)
 {
-	app_data *ad = data;
 	int ret = 0;
+
 	ret = dc_motor_init();
 	if (ret) {
 		_E("failed init motor, terminating this application");
 		service_app_exit();
 	}
 
-	ad->timer_id = g_timeout_add_seconds(10, __control_dcmotor_cb, ad);
-
 	return true;
+}
+
+static void service_app_control(app_control_h app_control, void *data)
+{
+	app_data *ad = data;
+	int ret;
+
+	resource_read_infrared_obstacle_avoidance_sensor(FRONT_PIN, &ad->f_value);
+	resource_read_infrared_obstacle_avoidance_sensor(REAR_PIN, &ad->r_value);
+
+	resource_set_infrared_obstacle_avoidance_sensor_interrupted_cb(FRONT_PIN, _front_ioa_sensor_changed_cb, ad);
+	resource_set_infrared_obstacle_avoidance_sensor_interrupted_cb(REAR_PIN, _back_ioa_sensor_changed_cb, ad);
+
+	___________control_motor(ad);
+
+	return;
 }
 
 static void service_app_terminate(void *data)
 {
 	app_data *ad = data;
-
-	if (ad->timer_id) {
-		g_source_remove(ad->timer_id);
-		ad->timer_id = 0;
-	}
 
 	dc_motor_fini();
 	log_file_close();

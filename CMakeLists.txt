@@ -32,6 +32,8 @@ ADD_EXECUTABLE(${PROJECT_NAME}
 	${PROJECT_ROOT_DIR}/src/dc_motor.c
 	${PROJECT_ROOT_DIR}/src/servo_motor.c
 	${PROJECT_ROOT_DIR}/src/pca9685.c
+	${PROJECT_ROOT_DIR}/src/resource.c
+	${PROJECT_ROOT_DIR}/src/resource/resource_infrared_obstacle_avoidance_sensor.c
 )
 
 TARGET_LINK_LIBRARIES(${PROJECT_NAME} ${pkgs_LDFLAGS} -lm)
