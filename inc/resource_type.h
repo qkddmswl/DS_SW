@@ -19,35 +19,10 @@
  * limitations under the License.
  */
 
-#ifndef __POSITION_FINDER_RESOURCE_INTERNAL_H__
-#define __POSITION_FINDER_RESOURCE_INTERNAL_H__
+#ifndef __POSITION_FINDER_RESOURCE_TYPE_H__
+#define __POSITION_FINDER_RESOURCE_TYPE_H__
 
-#include <peripheral_io.h>
-#include "resource_type.h"
+typedef void (*resource_read_cb)(double value, void *data);
+typedef void (*resource_changed_cb)(unsigned int value, void *data);
 
-#define PIN_MAX 40
-
-typedef struct _resource_read_cb_s {
-	resource_read_cb cb;
-	void *data;
-	int pin_num;
-} resource_read_s;
-
-typedef struct _resource_changed_s {
-	resource_changed_cb cb;
-	void *data;
-	int pin_num;
-} resource_changed_s;
-
-typedef struct _resource_s {
-	int opened;
-	peripheral_gpio_h sensor_h;
-	void (*close) (int);
-	/*FIXME*/
-	resource_changed_s *resource_changed_info;
-} resource_s;
-
-extern resource_s *resource_get_info(int pin_num);
-extern void resource_close_all(void);
-
-#endif /* __POSITION_FINDER_RESOURCE_INTERNAL_H__ */
+#endif /* __POSITION_FINDER_RESOURCE_TYPE_H__ */

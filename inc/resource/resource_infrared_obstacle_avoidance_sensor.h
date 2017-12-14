@@ -22,9 +22,8 @@
 #ifndef __POSITION_FINDER_RESOURCE_INFRARED_OBSTACLE_AVOIDANCE_SENSOR_H__
 #define __POSITION_FINDER_RESOURCE_INFRARED_OBSTACLE_AVOIDANCE_SENSOR_H__
 
+#include "resource_type.h"
 
-#include <stdint.h>
-#include "resource_internal.h"
 /**
  * @brief Reads the value of gpio connected infrared obstacle avoidance sensor.
  * @param[in] pin_num The number of the gpio pin connected to the infrared obstacle avoidance sensor
@@ -32,7 +31,7 @@
  * @return 0 on success, otherwise a negative error value
  * @see If the gpio pin is not open, creates gpio handle before reading the value of gpio.
  */
-extern int resource_read_infrared_obstacle_avoidance_sensor(int pin_num, uint32_t *out_value);
+extern int resource_read_infrared_obstacle_avoidance_sensor(int pin_num, unsigned int *out_value);
 
 extern int resource_set_infrared_obstacle_avoidance_sensor_interrupted_cb(int pin_num, resource_changed_cb cb, void *data);
 

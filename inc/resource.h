@@ -22,9 +22,6 @@
 #ifndef __POSITION_FINDER_RESOURCE_H__
 #define __POSITION_FINDER_RESOURCE_H__
 
-#include <peripheral_io.h>
-
-#include "resource_internal.h"
 #include "resource/resource_infrared_obstacle_avoidance_sensor.h"
 
 #endif /* __POSITION_FINDER_RESOURCE_H__ */

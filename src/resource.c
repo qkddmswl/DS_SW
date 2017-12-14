@@ -22,7 +22,7 @@
 #include <peripheral_io.h>
 
 #include "log.h"
-#include "resource.h"
+#include "resource_internal.h"
 
 static resource_s resource_info[PIN_MAX] = { {0, NULL, NULL}, };
 

@@ -20,10 +20,7 @@
  */
 
 #include <stdlib.h>
-#include <unistd.h>
 #include <peripheral_io.h>
-#include <sys/time.h>
-
 #include "log.h"
 #include "resource_internal.h"
 
@@ -64,7 +61,7 @@ static int _init_pin(int pin_num)
 	return 0;
 }
 
-int resource_read_infrared_obstacle_avoidance_sensor(int pin_num, uint32_t *out_value)
+int resource_read_infrared_obstacle_avoidance_sensor(int pin_num, unsigned int *out_value)
 {
 	int ret = PERIPHERAL_ERROR_NONE;
 
