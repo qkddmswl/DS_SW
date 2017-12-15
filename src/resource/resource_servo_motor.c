@@ -19,7 +19,7 @@
 #include "log.h"
 #include "resource/resource_PCA9685.h"
 
-#define SERVO_MOTOR_MAX 16
+#define SERVO_MOTOR_MAX PCA9685_CH_MAX
 
 static int servo_motor_index[SERVO_MOTOR_MAX] = {0, };
 

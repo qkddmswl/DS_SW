@@ -22,7 +22,6 @@
 #include <peripheral_io.h>
 #include "log.h"
 
-#define PCA9685_CH_MAX 16
 #define RPI3_I2C_BUS 1
 
 /* Registers/etc: */
