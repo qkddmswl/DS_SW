@@ -46,6 +46,9 @@ typedef enum {
 	MOTOR_ID_MAX
 } motor_id_e;
 
+int resource_set_motor_driver_L298N_configuration(motor_id_e id,
+	unsigned int pin1, unsigned int pin2, unsigned en_ch);
+
 int resource_set_motor_driver_L298N_speed(motor_id_e id, int speed);
 
 #endif /* __RESOURCE_MOTOR_DRIVER_L298N_H__ */
