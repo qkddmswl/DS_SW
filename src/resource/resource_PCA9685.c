@@ -22,6 +22,7 @@
 #include <peripheral_io.h>
 #include "log.h"
 
+#define PCA9685_CH_MAX 16
 #define RPI3_I2C_BUS 1
 
 /* Registers/etc: */
@@ -48,8 +49,14 @@
 #define INVRT              0x10
 #define OUTDRV             0x04
 
+typedef enum {
+	PCA9685_CH_STATE_NONE,
+	PCA9685_CH_STATE_USED,
+} pca9685_ch_state_e;
+
 static peripheral_i2c_h g_i2c_h = NULL;
 static unsigned int ref_count = 0;
+static pca9685_ch_state_e ch_state[PCA9685_CH_MAX] = {PCA9685_CH_STATE_NONE, };
 
 int resource_pca9685_set_frequency(unsigned int freq_hz)
 {
@@ -92,6 +99,9 @@ int resource_pca9685_set_value_to_channel(unsigned int channel, int on, int off)
 	int ret = PERIPHERAL_ERROR_NONE;
 	retvm_if(g_i2c_h == NULL, -1, "Not initialized yet");
 
+	retvm_if(ch_state[channel] == PCA9685_CH_STATE_NONE, -1,
+		"ch[%u] is not in used state", channel);
+
 	ret = peripheral_i2c_write_register_byte(g_i2c_h,
 			LED0_ON_L + 4*channel, on & 0xFF);
 	retvm_if(ret != PERIPHERAL_ERROR_NONE, -1, "failed to write register");
@@ -111,7 +121,7 @@ int resource_pca9685_set_value_to_channel(unsigned int channel, int on, int off)
 	return 0;
 }
 
-int resource_pca9685_set_value_to_all(int on, int off)
+static int resource_pca9685_set_value_to_all(int on, int off)
 {
 	int ret = PERIPHERAL_ERROR_NONE;
 	retvm_if(g_i2c_h == NULL, -1, "Not initialized yet");
@@ -135,16 +145,23 @@ int resource_pca9685_set_value_to_all(int on, int off)
 	return 0;
 }
 
-int resource_pca9685_init(void)
+int resource_pca9685_init(unsigned int ch)
 {
 	uint8_t mode1 = 0;
 	int ret = PERIPHERAL_ERROR_NONE;
 
-	if (g_i2c_h) {
-		ref_count++;
-		_D("Already initialized - ref_count[%u]\n", ref_count);
-		return 0;
+	if (ch == 0 || ch >= PCA9685_CH_MAX) {
+		_E("channel[%u] is out of range", ch);
+		return -1;
 	}
+
+	if (ch_state[ch] == PCA9685_CH_STATE_USED) {
+		_E("channel[%u] is already in used state", ch);
+		return -1;
+	}
+
+	if (g_i2c_h)
+		goto PASS_OPEN_HANDLE;
 
 	ret = peripheral_i2c_open(RPI3_I2C_BUS, PCA9685_ADDRESS, &g_i2c_h);
 	if (ret != PERIPHERAL_ERROR_NONE) {
@@ -153,44 +170,75 @@ int resource_pca9685_init(void)
 		return -1;
 	}
 	ret = resource_pca9685_set_value_to_all(0, 0);
-	retvm_if(ret, -1, "failed to set value to register");
+	if (ret) {
+		_E("failed to reset all value to register");
+		goto ERROR;
+	}
 
 	ret = peripheral_i2c_write_register_byte(g_i2c_h, MODE2, OUTDRV);
-	retvm_if(ret != PERIPHERAL_ERROR_NONE, -1, "failed to write register");
+	if (ret != PERIPHERAL_ERROR_NONE) {
+		_E("failed to write register");
+		goto ERROR;
+	}
 
 	ret = peripheral_i2c_write_register_byte(g_i2c_h, MODE1, ALLCALL);
-	retvm_if(ret != PERIPHERAL_ERROR_NONE, -1, "failed to write register");
+	if (ret != PERIPHERAL_ERROR_NONE) {
+		_E("failed to write register");
+		goto ERROR;
+	}
 
 	usleep(500); // wait for oscillator
 
 	ret = peripheral_i2c_read_register_byte(g_i2c_h, MODE1, &mode1);
-	retvm_if(ret != PERIPHERAL_ERROR_NONE, -1, "failed to read register");
+	if (ret != PERIPHERAL_ERROR_NONE) {
+		_E("failed to read register");
+		goto ERROR;
+	}
 
 	mode1 = mode1 & (~SLEEP); // # wake up (reset sleep)
 	ret = peripheral_i2c_write_register_byte(g_i2c_h, MODE1, mode1);
-	retvm_if(ret != PERIPHERAL_ERROR_NONE, -1, "failed to write register");
+	if (ret != PERIPHERAL_ERROR_NONE) {
+		_E("failed to write register");
+		goto ERROR;
+	}
 
 	usleep(500); // wait for oscillator
 
 	ret = resource_pca9685_set_frequency(60);
 	if (ret) {
 		_E("failed to set frequency");
-		peripheral_i2c_close(g_i2c_h);
-		g_i2c_h = NULL;
-		return -1;
+		goto ERROR;
 	}
+
+PASS_OPEN_HANDLE:
 	ref_count++;
+	ch_state[ch] = PCA9685_CH_STATE_USED;
+	_D("pca9685 - ref_count[%u]", ref_count);
+	_D("sets ch[%u] used state", ch);
 
 	return 0;
+
+ERROR:
+	if (g_i2c_h)
+		peripheral_i2c_close(g_i2c_h);
+
+	g_i2c_h = NULL;
+	return -1;
 }
 
-int resource_pca9685_fini(void)
+int resource_pca9685_fini(unsigned int ch)
 {
-	ref_count--;
+	if (ch_state[ch] == PCA9685_CH_STATE_NONE) {
+		_E("channel[%u] is not in used state", ch);
+		return -1;
+	}
+	resource_pca9685_set_value_to_channel(ch, 0, 0);
+	ch_state[ch] = PCA9685_CH_STATE_NONE;
 
+	ref_count--;
 	_D("ref count - %u", ref_count);
 
-	if (g_i2c_h) {
+	if (ref_count == 0 && g_i2c_h) {
 		_D("finalizing pca9685");
 		resource_pca9685_set_value_to_all(0, 0);
 		peripheral_i2c_close(g_i2c_h);

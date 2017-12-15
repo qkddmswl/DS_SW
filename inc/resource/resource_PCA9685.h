@@ -19,10 +19,9 @@
 #ifndef __RESOURCE_PCA9685_H__
 #define __RESOURCE_PCA9685_H__
 
-int resource_pca9685_init(void);
-int resource_pca9685_fini(void);
+int resource_pca9685_init(unsigned int ch);
+int resource_pca9685_fini(unsigned int ch);
 int resource_pca9685_set_frequency(unsigned int freq_hz);
 int resource_pca9685_set_value_to_channel(unsigned int channel, int on, int off);
-int resource_pca9685_set_value_to_all(int on, int off);
 
 #endif /* __RESOURCE_PCA9685_H__ */

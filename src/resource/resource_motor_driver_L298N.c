@@ -143,7 +143,7 @@ static int __fini_motor_by_id(motor_id_e id)
 	if (g_md_h[id].motor_state > MOTOR_STATE_STOP)
 		__motor_brake_n_stop_by_id(id);
 
-	resource_pca9685_fini();
+	resource_pca9685_fini(g_md_h[id].en_ch);
 
 	if (g_md_h[id].pin1_h) {
 		peripheral_gpio_close(g_md_h[id].pin1_h);
@@ -169,7 +169,7 @@ static int __init_motor_by_id(motor_id_e id)
 	if (g_md_h[id].motor_state == MOTOR_STATE_NONE)
 		__set_default_configuration_by_id(id);
 
-	ret = resource_pca9685_init();
+	ret = resource_pca9685_init(g_md_h[id].en_ch);
 	if (ret) {
 		_E("failed to init PCA9685");
 		return -1;
@@ -199,7 +199,7 @@ static int __init_motor_by_id(motor_id_e id)
 	return 0;
 
 ERROR:
-	resource_pca9685_fini();
+	resource_pca9685_fini(g_md_h[id].en_ch);
 
 	if (g_md_h[id].pin1_h) {
 		peripheral_gpio_close(g_md_h[id].pin1_h);
