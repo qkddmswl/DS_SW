@@ -55,7 +55,7 @@ typedef enum {
 
 static peripheral_i2c_h g_i2c_h = NULL;
 static unsigned int ref_count = 0;
-static pca9685_ch_state_e ch_state[PCA9685_CH_MAX] = {PCA9685_CH_STATE_NONE, };
+static pca9685_ch_state_e ch_state[PCA9685_CH_MAX + 1] = {PCA9685_CH_STATE_NONE, };
 
 int resource_pca9685_set_frequency(unsigned int freq_hz)
 {
@@ -149,7 +149,7 @@ int resource_pca9685_init(unsigned int ch)
 	uint8_t mode1 = 0;
 	int ret = PERIPHERAL_ERROR_NONE;
 
-	if (ch == 0 || ch >= PCA9685_CH_MAX) {
+	if (ch == 0 || ch > PCA9685_CH_MAX) {
 		_E("channel[%u] is out of range", ch);
 		return -1;
 	}

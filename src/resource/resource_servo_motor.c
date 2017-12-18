@@ -21,7 +21,7 @@
 
 #define SERVO_MOTOR_MAX PCA9685_CH_MAX
 
-static int servo_motor_index[SERVO_MOTOR_MAX] = {0, };
+static int servo_motor_index[SERVO_MOTOR_MAX + 1] = {0, };
 
 static int resource_servo_motor_init(unsigned int ch)
 {
@@ -50,7 +50,7 @@ void resource_close_servo_motor_all(void)
 {
 	unsigned int i;
 
-	for (i = 1; i < SERVO_MOTOR_MAX; i++)
+	for (i = 1; i <= SERVO_MOTOR_MAX; i++)
 		resource_close_servo_motor(i);
 
 	return;
@@ -63,7 +63,7 @@ int resource_set_servo_motor_value(unsigned int motor_id, int value)
 	if (motor_id == 0)
 		return -1;
 
-	if (motor_id >= SERVO_MOTOR_MAX)
+	if (motor_id > SERVO_MOTOR_MAX)
 		return -1;
 
 	if (servo_motor_index[motor_id] == 0) {

@@ -19,7 +19,7 @@
 #ifndef __RESOURCE_PCA9685_H__
 #define __RESOURCE_PCA9685_H__
 
-#define PCA9685_CH_MAX 16
+#define PCA9685_CH_MAX 15
 
 int resource_pca9685_init(unsigned int ch);
 int resource_pca9685_fini(unsigned int ch);
