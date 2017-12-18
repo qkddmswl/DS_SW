@@ -50,7 +50,7 @@ void resource_close_servo_motor_all(void)
 {
 	unsigned int i;
 
-	for (i = 1; i <= SERVO_MOTOR_MAX; i++)
+	for (i = 0 ; i <= SERVO_MOTOR_MAX; i++)
 		resource_close_servo_motor(i);
 
 	return;
@@ -59,9 +59,6 @@ void resource_close_servo_motor_all(void)
 int resource_set_servo_motor_value(unsigned int motor_id, int value)
 {
 	int ret = 0;
-
-	if (motor_id == 0)
-		return -1;
 
 	if (motor_id > SERVO_MOTOR_MAX)
 		return -1;

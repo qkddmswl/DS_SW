@@ -150,7 +150,7 @@ int resource_pca9685_init(unsigned int ch)
 	uint8_t mode1 = 0;
 	int ret = PERIPHERAL_ERROR_NONE;
 
-	if (ch == 0 || ch > PCA9685_CH_MAX) {
+	if (ch > PCA9685_CH_MAX) {
 		_E("channel[%u] is out of range", ch);
 		return -1;
 	}
