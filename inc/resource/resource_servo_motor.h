@@ -19,6 +19,18 @@
 #ifndef __RESOURCE_SERVO_MOTOR_H__
 #define __RESOURCE_SERVO_MOTOR_H__
 
+/**
+ * This module is sample codes to handling Servo motors in Tizen platform.
+ * HW is configured with PCA9685(PWM controller).
+ */
+
+/**
+ * @param[in] id The motor id
+ * @param[in] value The value to control servo motor
+ *
+ * @return 0 on success, otherwise a negative error value
+ * @remarks Must adjust servo motor with some value before use to fit your system.
+ */
 int resource_set_servo_motor_value(unsigned int motor_id, int value);
 
 #endif /* __RESOURCE_SERVO_MOTOR_H__ */
