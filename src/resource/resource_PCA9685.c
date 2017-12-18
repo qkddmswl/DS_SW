@@ -21,6 +21,7 @@
 #include <math.h>
 #include <peripheral_io.h>
 #include "log.h"
+#include "resource/resource_PCA9685.h"
 
 #define RPI3_I2C_BUS 1
 
