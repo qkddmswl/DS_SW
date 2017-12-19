@@ -23,5 +23,7 @@
 #define __POSITION_FINDER_RESOURCE_H__
 
 #include "resource/resource_infrared_obstacle_avoidance_sensor.h"
+#include "resource/resource_motor_driver_L298N.h"
+#include "resource/resource_servo_motor.h"
 
 #endif /* __POSITION_FINDER_RESOURCE_H__ */

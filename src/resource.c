@@ -41,4 +41,6 @@ void resource_close_all(void)
 		if (resource_info[i].close)
 			resource_info[i].close(i);
 	}
+	resource_close_motor_driver_L298N_all();
+	resource_close_servo_motor_all();
 }
