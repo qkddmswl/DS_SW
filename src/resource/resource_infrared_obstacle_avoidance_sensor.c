@@ -103,14 +103,13 @@ int resource_set_infrared_obstacle_avoidance_sensor_interrupted_cb(int pin_num, 
 		resource_get_info(pin_num)->resource_changed_info = calloc(1, sizeof(resource_changed_s));
 		retv_if(!resource_get_info(pin_num)->resource_changed_info, -1);
 	} else {
-		if (resource_get_info(pin_num)->sensor_h) {
+		if (resource_get_info(pin_num)->sensor_h)
 			peripheral_gpio_unset_interrupted_cb(resource_get_info(resource_get_info(pin_num)->resource_changed_info->pin_num)->sensor_h);
-		}
 	}
 
 	resource_get_info(pin_num)->resource_changed_info->cb = cb;
 	resource_get_info(pin_num)->resource_changed_info->data = data;
- 	resource_get_info(pin_num)->resource_changed_info->pin_num = pin_num;
+	resource_get_info(pin_num)->resource_changed_info->pin_num = pin_num;
 
 	if (!resource_get_info(pin_num)->opened) {
 		ret = _init_pin(pin_num);
