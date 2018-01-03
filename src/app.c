@@ -21,7 +21,6 @@
 #include <glib.h>
 #include <service_app.h>
 #include "log.h"
-#include "dc_motor.h"
 #include "resource.h"
 
 enum {
@@ -59,6 +58,19 @@ static void service_app_low_memory(app_event_info_h event_info, void *user_data)
 	return;
 }
 
+static int __servo_motor_test(void)
+{
+	resource_set_motor_driver_L298N_speed(MOTOR_ID_1, 0);
+	resource_set_motor_driver_L298N_speed(MOTOR_ID_2, 0);
+	resource_set_servo_motor_value(0, 400);
+	sleep(1);
+	resource_set_servo_motor_value(0, 500);
+	sleep(1);
+	resource_set_servo_motor_value(0, 450);
+	sleep(1);
+	return 0;
+}
+
 static void ___________control_motor(app_data *ad)
 {
 	_D("control motor, state(%u), f_val(%u), r_val(%u)",
@@ -66,43 +78,47 @@ static void ___________control_motor(app_data *ad)
 
 
 	switch (ad->dir_state) {
-		case DIR_STATE_F:
-			if (ad->f_value)  {
-				if (ad->r_value) {
-					ad->dir_state = DIR_STATE_S;
-					dc_motor_speed_set(DC_MOTOR_ID_L, 0);
-					dc_motor_speed_set(DC_MOTOR_ID_R, 0);
-				} else {
-					ad->dir_state = DIR_STATE_B;
-					dc_motor_speed_set(DC_MOTOR_ID_L, -2000);
-					dc_motor_speed_set(DC_MOTOR_ID_R, -2000);
-				}
-			}
-			break;
-		case DIR_STATE_B:
-			if (ad->r_value)  {
-				if (ad->f_value) {
-					ad->dir_state = DIR_STATE_S;
-					dc_motor_speed_set(DC_MOTOR_ID_L, 0);
-					dc_motor_speed_set(DC_MOTOR_ID_R, 0);
-				} else {
-					ad->dir_state = DIR_STATE_F;
-					dc_motor_speed_set(DC_MOTOR_ID_L, 2000);
-					dc_motor_speed_set(DC_MOTOR_ID_R, 2000);
-				}
-			}
-			break;
-		case DIR_STATE_S:
-			if (!ad->f_value)  {
-				ad->dir_state = DIR_STATE_F;
-				dc_motor_speed_set(DC_MOTOR_ID_L, 2000);
-				dc_motor_speed_set(DC_MOTOR_ID_R, 2000);
-			} else if (!ad->r_value) {
+	case DIR_STATE_F:
+		if (ad->f_value)  {
+			if (ad->r_value) {
+				ad->dir_state = DIR_STATE_S;
+				resource_set_motor_driver_L298N_speed(MOTOR_ID_1, 0);
+				resource_set_motor_driver_L298N_speed(MOTOR_ID_2, 0);
+			} else {
 				ad->dir_state = DIR_STATE_B;
-				dc_motor_speed_set(DC_MOTOR_ID_L, -2000);
-				dc_motor_speed_set(DC_MOTOR_ID_R, -2000);
+				__servo_motor_test();
+				resource_set_motor_driver_L298N_speed(MOTOR_ID_1, -2000);
+				resource_set_motor_driver_L298N_speed(MOTOR_ID_2, -2000);
 			}
-			break;
+		}
+		break;
+	case DIR_STATE_B:
+		if (ad->r_value)  {
+			if (ad->f_value) {
+				ad->dir_state = DIR_STATE_S;
+				resource_set_motor_driver_L298N_speed(MOTOR_ID_1, 0);
+				resource_set_motor_driver_L298N_speed(MOTOR_ID_2, 0);
+			} else {
+				ad->dir_state = DIR_STATE_F;
+				__servo_motor_test();
+				resource_set_motor_driver_L298N_speed(MOTOR_ID_1, 2000);
+				resource_set_motor_driver_L298N_speed(MOTOR_ID_2, 2000);
+			}
+		}
+		break;
+	case DIR_STATE_S:
+		if (!ad->f_value)  {
+			ad->dir_state = DIR_STATE_F;
+			__servo_motor_test();
+			resource_set_motor_driver_L298N_speed(MOTOR_ID_1, 2000);
+			resource_set_motor_driver_L298N_speed(MOTOR_ID_2, 2000);
+		} else if (!ad->r_value) {
+			ad->dir_state = DIR_STATE_B;
+			__servo_motor_test();
+			resource_set_motor_driver_L298N_speed(MOTOR_ID_1, -2000);
+			resource_set_motor_driver_L298N_speed(MOTOR_ID_2, -2000);
+		}
+		break;
 	}
 
 	return;
@@ -138,9 +154,19 @@ static bool service_app_create(void *data)
 {
 	int ret = 0;
 
-	ret = dc_motor_init();
+	/*
+	 * if you want to use default configuration,
+	 * Do not need to call resource_set_motor_driver_L298N_configuration(),
+	 *
+	*/
+	ret = resource_set_motor_driver_L298N_configuration(MOTOR_ID_1, 19, 16, 5);
 	if (ret) {
-		_E("failed init motor, terminating this application");
+		_E("resource_set_motor_driver_L298N_configuration()");
+		service_app_exit();
+	}
+	ret = resource_set_motor_driver_L298N_configuration(MOTOR_ID_2, 26, 20, 4);
+	if (ret) {
+		_E("resource_set_motor_driver_L298N_configuration()");
 		service_app_exit();
 	}
 
@@ -152,11 +178,17 @@ static void service_app_control(app_control_h app_control, void *data)
 	app_data *ad = data;
 	int ret;
 
+	/* set speed 0, to reduce delay of initializing motor driver */
+	resource_set_motor_driver_L298N_speed(MOTOR_ID_1, 0);
+	resource_set_motor_driver_L298N_speed(MOTOR_ID_2, 0);
+
 	resource_read_infrared_obstacle_avoidance_sensor(FRONT_PIN, &ad->f_value);
 	resource_read_infrared_obstacle_avoidance_sensor(REAR_PIN, &ad->r_value);
 
-	resource_set_infrared_obstacle_avoidance_sensor_interrupted_cb(FRONT_PIN, _front_ioa_sensor_changed_cb, ad);
-	resource_set_infrared_obstacle_avoidance_sensor_interrupted_cb(REAR_PIN, _back_ioa_sensor_changed_cb, ad);
+	resource_set_infrared_obstacle_avoidance_sensor_interrupted_cb(FRONT_PIN,
+		_front_ioa_sensor_changed_cb, ad);
+	resource_set_infrared_obstacle_avoidance_sensor_interrupted_cb(REAR_PIN,
+		_back_ioa_sensor_changed_cb, ad);
 
 	___________control_motor(ad);
 
@@ -167,7 +199,6 @@ static void service_app_terminate(void *data)
 {
 	app_data *ad = data;
 
-	dc_motor_fini();
 	log_file_close();
 
 	_D("Bye ~");
