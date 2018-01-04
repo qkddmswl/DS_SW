@@ -62,7 +62,7 @@ static gchar *__socket_address_to_string(GSocketAddress *address)
 	return res;
 }
 
-int __receiver_udp_init(void)
+static int __receiver_udp_init(void)
 {
 	if (udp_handle) {
 		_E("receiver udp is already initialized");
@@ -83,7 +83,7 @@ int __receiver_udp_init(void)
 	return 0;
 }
 
-int __receiver_udp_fini(void)
+static int __receiver_udp_fini(void)
 {
 	if (udp_handle) {
 		if (udp_handle->io_watch_id)
