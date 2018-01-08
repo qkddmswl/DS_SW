@@ -251,7 +251,7 @@ int receiver_udp_start(void)
 	}
 
 	if (udp_handle->state >= RECEIVER_UDP_STATE_READY) {
-		_W("receivet udp is already started");
+		_W("receiver udp is already started");
 		return 0;
 	}
 
