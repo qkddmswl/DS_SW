@@ -16,18 +16,15 @@
 
 #include <time.h>
 #include <limits.h>
+#include <stdlib.h>
+#include <glib.h>
+
 #include "log.h"
 #include "message.h"
 
-struct __message_type_s {
-	unsigned long long int seq_num;
-	message_cmd_e cmd;
-	int servo;
-	int speed;
-	unsigned long long int time; /* to be used to order messages */
-};
-
 static unsigned long long int sequence_number = 0;
+static GQueue inqueue = G_QUEUE_INIT;
+static GQueue outqueue = G_QUEUE_INIT;
 
 static unsigned long long int __message_get_monotonic_time(void)
 {

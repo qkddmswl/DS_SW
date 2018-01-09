@@ -24,18 +24,25 @@ typedef enum __message_cmd_e {
 	MESSAGE_CMD_BYE, /* to notify explicitly closing connection */
 } message_cmd_e;
 
+struct __message_type_s {
+	unsigned long long int seq_num;
+	message_cmd_e cmd;
+	int servo;
+	int speed;
+	unsigned long long int time; /* to be used to order messages */
+};
 typedef struct __message_type_s message_s;
 
 int message_new(message_cmd_e cmd, int servo, int speed, message_s *new_msg);
 void message_reset_seq_num(void);
 
-/* To encapsulate message struction,
- * we need to discuss about it.
- * which one is better, hiding its members or direct accessing its members?
- */
-int message_get_seq_num(message_s *msg, unsigned long long int *seq_num);
-int message_get_cmd(message_s *msg, message_cmd_e *cmd);
-int message_get_speed_value(message_s *msg, int *speed);
-int message_get_servo_value(message_s *msg, int *servo);
+int message_queue_new(void);
+void message_queue_clear(void);
+
+void message_push_to_inqueue(message_s *msg);
+message_s *message_pop_from_inqueue(void);
+
+void message_push_to_outqueue(message_s *msg);
+message_s *message_pop_from_outqueue(void);
 
 #endif /* __CAR_APP_MESSAGE_H__ */
