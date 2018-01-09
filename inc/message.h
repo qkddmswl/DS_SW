@@ -35,7 +35,7 @@ void message_reset_seq_num(void);
  */
 int message_get_seq_num(message_s *msg, unsigned long long int *seq_num);
 int message_get_cmd(message_s *msg, message_cmd_e *cmd);
-int message_get_servo_value(message_s *msg, int *speed);
+int message_get_speed_value(message_s *msg, int *speed);
 int message_get_servo_value(message_s *msg, int *servo);
 
 #endif /* __CAR_APP_MESSAGE_H__ */
