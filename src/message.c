@@ -42,7 +42,8 @@ static unsigned long long int __message_get_monotonic_time(void)
 	return c_time;
 }
 
-int message_new(message_cmd_e cmd, int servo, int speed, message_s *new_msg)
+int message_new_to_send(message_cmd_e cmd,
+	int servo, int speed, message_s *new_msg)
 {
 	retv_if(!new_msg, -1);
 
@@ -68,38 +69,52 @@ void message_reset_seq_num(void)
 	return;
 }
 
-int message_get_seq_num(message_s *msg, unsigned long long int *seq_num)
+int message_queue_new(void)
 {
-	retv_if(!msg, -1);
-
-	*seq_num = msg->seq_num;
-
+	/* Do nothing because we use static queue
+	 * if we use multiple thread to handling messages,
+	 * message queue should be changed to thread-safe one.
+	 */
 	return 0;
 }
 
-int message_get_cmd(message_s *msg, message_cmd_e *cmd)
+static void __queue_clear_cb(gpointer data, gpointer user_data)
 {
-	retv_if(!msg, -1);
-
-	*cmd = msg->cmd;
-
-	return 0;
+	free(data);
+	return;
 }
 
-int message_get_speed_value(message_s *msg, int *speed)
+void message_queue_clear(void)
 {
-	retv_if(!msg, -1);
+	g_queue_foreach(&inqueue, __queue_clear_cb, NULL);
+	g_queue_clear(&inqueue);
 
-	*speed = msg->speed;
+	g_queue_foreach(&outqueue, __queue_clear_cb, NULL);
+	g_queue_clear(&outqueue);
 
-	return 0;
+	return;
 }
 
-int message_get_servo_value(message_s *msg, int *servo)
+void message_push_to_inqueue(message_s *msg)
 {
-	retv_if(!msg, -1);
+	g_queue_push_tail(&inqueue, msg);
+	_D("seq[%llu] is pushed to in-queue", msg->seq_num);
+	return;
+}
 
-	*servo = msg->servo;
+void message_push_to_outqueue(message_s *msg)
+{
+	g_queue_push_tail(&outqueue, msg);
+	_D("seq[%llu] is pushed to out-queue", msg->seq_num);
+	return;
+}
 
-	return 0;
+message_s *message_pop_from_inqueue(void)
+{
+	return (message_s *)g_queue_pop_head(&inqueue);
+}
+
+message_s *message_pop_from_outqueue(void)
+{
+	return (message_s *)g_queue_pop_head(&outqueue);
 }
