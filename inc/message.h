@@ -33,7 +33,9 @@ struct __message_type_s {
 };
 typedef struct __message_type_s message_s;
 
-int message_new(message_cmd_e cmd, int servo, int speed, message_s *new_msg);
+int message_new_to_send(message_cmd_e cmd, 
+	int servo, int speed, message_s *new_msg);
+
 void message_reset_seq_num(void);
 
 int message_queue_new(void);
