@@ -14,11 +14,22 @@
  * limitations under the License.
  */
 
-#ifndef __CAR_APP_RECEIVER_UDP_H__
-#define __CAR_APP_RECEIVER_UDP_H__
+#ifndef __CAR_APP_RECEIVER_TYPE_H__
+#define __CAR_APP_RECEIVER_TYPE_H__
 
-#include "receiver_internal.h"
+typedef enum __receiver_type_e {
+	RECEIVER_TYPE_UDP = (1 << 0),
+	RECEIVER_TYPE_BLUETOOTH = (1 << 1),
+} receiver_type_e;
 
-int receiver_udp_module_register(receiver_module_h *handle);
+typedef enum __receiver_state_e {
+	RECEIVER_STATE_NONE,
+	RECEIVER_STATE_INIT,
+	RECEIVER_STATE_READY,
+	RECEIVER_STATE_CONNECTED,
+} receiver_state_e;
 
-#endif /* __CAR_APP_RECEIVER_UDP_H__ */
+typedef void(*receiver_state_changed_cb)
+	(receiver_type_e type, receiver_state_e state, void* user_data);
+
+#endif /* __CAR_APP_RECEIVER_TYPE_H__ */

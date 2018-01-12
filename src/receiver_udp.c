@@ -25,12 +25,14 @@
 
 #include "log.h"
 #include "receiver_internal.h"
+#include "message.h"
 
 #define RECEIVER_UDP_PORT 57984
 #define RECEIVER_UDP_WAIT_TIMEOUT 3
 
 typedef enum __receiver_udp_state_e {
 	RECEIVER_UDP_STATE_NONE,
+	RECEIVER_UDP_STATE_INIT,
 	RECEIVER_UDP_STATE_READY,
 	RECEIVER_UDP_STATE_CONNECTED,
 } receiver_udp_state_e;
@@ -42,7 +44,7 @@ typedef struct __receiver_udp_h {
 	GSocket *socket;
 } receiver_udp_h;
 
-static receiver_udp_h *udp_handle = NULL;
+// static receiver_udp_h *udp_handle = NULL;
 
 static gchar *__socket_address_to_string(GSocketAddress *address)
 {
@@ -62,56 +64,57 @@ static gchar *__socket_address_to_string(GSocketAddress *address)
 	return res;
 }
 
-static int __receiver_udp_init(void)
+static receiver_state_e ___state_convert(receiver_udp_state_e state)
 {
-	if (udp_handle) {
-		_E("receiver udp is already initialized");
-		return -1;
+	receiver_state_e r_state = RECEIVER_STATE_NONE;
+
+	switch (state) {
+	case RECEIVER_UDP_STATE_NONE:
+		r_state = RECEIVER_STATE_NONE;
+		break;
+	case RECEIVER_UDP_STATE_INIT:
+		r_state = RECEIVER_STATE_INIT;
+		break;
+	case RECEIVER_UDP_STATE_READY:
+		r_state = RECEIVER_STATE_READY;
+		break;
+	case RECEIVER_UDP_STATE_CONNECTED:
+		r_state = RECEIVER_STATE_CONNECTED;
+		break;
 	}
-
-	udp_handle = malloc(sizeof(receiver_udp_h));
-	if (!udp_handle) {
-		_E("failed to alloc receiver udp handle");
-		return -1;
-	}
-
-	udp_handle->state = RECEIVER_UDP_STATE_NONE;
-	udp_handle->io_watch_id = 0;
-	udp_handle->wait_timer_id = 0;
-	udp_handle->socket = NULL;
-
-	return 0;
+	return r_state;
 }
 
-static int __receiver_udp_fini(void)
+static void __receiver_udp_state_set(
+	receiver_module_h *handle, receiver_udp_state_e state)
 {
-	if (udp_handle) {
-		if (udp_handle->io_watch_id)
-			g_source_remove(udp_handle->io_watch_id);
+	receiver_udp_h *udp_handle = NULL;
 
-		if (udp_handle->wait_timer_id)
-			g_source_remove(udp_handle->wait_timer_id);
+	ret_if(!handle);
 
-		if (udp_handle->socket) {
-			g_socket_close(udp_handle->socket, NULL);
-			g_object_unref(udp_handle->socket);
-		}
+	udp_handle = receiver_get_module_data(handle);
+	ret_if(!udp_handle);
 
-		free(udp_handle);
-		udp_handle = NULL;
-	}
+	udp_handle->state = state;
 
-	return 0;
+	receiver_module_state_changed(handle, ___state_convert(state));
+
+	return;
 }
 
 /* Uses system call, because glib socket API doesn't support unset connect
  * Please carefully use this function, and after use this function,
  * DO NOT use g_socket_is_connected().
  */
-static int __receiver_udp_unset_connection(void)
+static int __receiver_udp_unset_connection(receiver_module_h *handle)
 {
+	receiver_udp_h *udp_handle = NULL;
 	struct sockaddr addr;
 	int s_fd = 0;
+
+	retv_if(!handle, -1);
+
+	udp_handle = receiver_get_module_data(handle);
 
 	retvm_if(!udp_handle, -1, "handle is not created");
 	retvm_if(!udp_handle->socket, -1, "socket is not created");
@@ -125,17 +128,23 @@ static int __receiver_udp_unset_connection(void)
 		/* re-create socket or not ??? */
 		return -1;
 	}
-	udp_handle->state = RECEIVER_UDP_STATE_READY;
-	_D("unset connection");
+
+	__receiver_udp_state_set(handle, RECEIVER_UDP_STATE_READY);
 
 	return 0;
 }
 
-static int __receiver_udp_set_connection(GSocketAddress *sender_a)
+static int __receiver_udp_set_connection(
+	receiver_module_h *handle, GSocketAddress *sender_a)
 {
 	GError *error = NULL;
+	receiver_udp_h *udp_handle = NULL;
 
+	retv_if(!handle, -1);
 	retv_if(!sender_a, -1);
+
+	udp_handle = receiver_get_module_data(handle);
+
 	retvm_if(!udp_handle, -1, "handle is not created");
 	retvm_if(!udp_handle->socket, -1, "socket is not created");
 
@@ -150,21 +159,31 @@ static int __receiver_udp_set_connection(GSocketAddress *sender_a)
 		g_error_free(error);
 		return -1;
 	}
-	udp_handle->state = RECEIVER_UDP_STATE_CONNECTED;
-	_D("set connection");
+
+	__receiver_udp_state_set(handle, RECEIVER_UDP_STATE_CONNECTED);
 
 	return 0;
 }
 
 static gboolean __wait_time_out(gpointer user_data)
 {
-	__receiver_udp_unset_connection();
+	receiver_module_h *handle = user_data;
+
+	retv_if(!handle, FALSE);
+
+	__receiver_udp_unset_connection(handle);
 
 	return FALSE;
 }
 
-static void __receiver_udp_update_wait_timer(void)
+static void __receiver_udp_update_wait_timer(receiver_module_h *handle)
 {
+	receiver_udp_h *udp_handle = NULL;
+
+	ret_if(!handle);
+
+	udp_handle = receiver_get_module_data(handle);
+
 	if (udp_handle) {
 		if (udp_handle->wait_timer_id) {
 			g_source_remove(udp_handle->wait_timer_id);
@@ -172,8 +191,9 @@ static void __receiver_udp_update_wait_timer(void)
 		}
 		udp_handle->wait_timer_id =
 			g_timeout_add_seconds(RECEIVER_UDP_WAIT_TIMEOUT,
-				(GSourceFunc)__wait_time_out, NULL);
+				(GSourceFunc)__wait_time_out, handle);
 	}
+
 	return;
 }
 
@@ -181,53 +201,67 @@ static gboolean __read_socket(GIOChannel *channel,
 		GIOCondition condition,
 		gpointer data)
 {
-	gssize size = 0;
-	receiver_udp_h *handle = (receiver_udp_h *)data;
+	receiver_module_h *handle = data;
+	receiver_udp_h *udp_handle = NULL;
 	GError *error = NULL;
-
-	char buf[1024] = {0, }; /* temp */
+	message_s *r_msg = NULL;
+	gssize size = 0;
 
 	retv_if(!handle, TRUE);
-	retv_if(!handle->socket, TRUE);
 
-	if (handle->state == RECEIVER_UDP_STATE_NONE) {
+	udp_handle = receiver_get_module_data(handle);
+
+	retv_if(!udp_handle, TRUE);
+	retv_if(!udp_handle->socket, TRUE);
+
+	if (udp_handle->state < RECEIVER_UDP_STATE_READY) {
 		_E("receiver udp is not ready yet");
 		return TRUE;
 	}
 
-	if (handle->state == RECEIVER_UDP_STATE_READY) {
+	r_msg = malloc(sizeof(message_s));
+	retv_if(!r_msg, TRUE);
+
+	if (udp_handle->state == RECEIVER_UDP_STATE_READY) {
 		char *s_addr = NULL;
 		GSocketAddress *address = NULL;
 
-		size = g_socket_receive_from(handle->socket, &address,
-			buf, sizeof(buf), NULL, &error);
+		size = g_socket_receive_from(udp_handle->socket, &address,
+			(gchar *)r_msg, sizeof(message_s), NULL, &error);
 
 		if (size < 0) {
 			_D("Error receiving from socket: %s", error->message);
 			g_error_free(error);
+			free(r_msg);
+			r_msg = NULL;
 		}
 
 		s_addr = __socket_address_to_string(address);
 		_D("received first data from [%s]", s_addr);
 
+		message_push_to_inqueue(r_msg);
 
-		if (!__receiver_udp_set_connection(address))
-			__receiver_udp_update_wait_timer();
+		if (!__receiver_udp_set_connection(handle, address))
+			__receiver_udp_update_wait_timer(handle);
 		else
 			_E("failed to set connection with [%s]", s_addr);
 
 		free(s_addr);
 		g_object_unref(address);
 	} else { /* state is RECEIVER_UDP_STATE_CONNECTED */
-		size = g_socket_receive(handle->socket,
-			buf, sizeof(buf), NULL, &error);
+		size = g_socket_receive(udp_handle->socket,
+			(gchar *)r_msg, sizeof(message_s), NULL, &error);
 
 		if (size < 0) {
 			_D("Error receiving from socket: %s", error->message);
 			g_error_free(error);
+			free(r_msg);
+			r_msg = NULL;
 		}
 		_D("received data");
-		__receiver_udp_update_wait_timer();
+		message_push_to_inqueue(r_msg);
+
+		__receiver_udp_update_wait_timer(handle);
 	}
 
 	/* TODO : what should I do after receiveing some data? */
@@ -235,24 +269,90 @@ static gboolean __read_socket(GIOChannel *channel,
 	return TRUE;
 }
 
-int receiver_udp_start(void)
+static int _receiver_udp_start(void *data)
 {
+	receiver_module_h *handle = data;
+	receiver_udp_h *udp_handle = NULL;
+	int socket_fd = 0;
+	GIOChannel *ch = NULL;
+
+	retv_if(!handle, -1);
+
+	udp_handle = receiver_get_module_data(handle);
+
+	retv_if(!udp_handle, -1);
+	retv_if(!udp_handle->socket, -1);
+
+	if (udp_handle->state != RECEIVER_UDP_STATE_INIT) {
+		if (udp_handle->state == RECEIVER_UDP_STATE_READY) {
+			_E("receiver udp is already started");
+			return 0;
+		} else {
+			_E("receiver udp is invalid state [%d]", udp_handle->state);
+			return -1;
+		}
+	}
+
+	socket_fd = g_socket_get_fd(udp_handle->socket);
+	ch = g_io_channel_unix_new(socket_fd);
+	udp_handle->io_watch_id =
+		g_io_add_watch(ch, G_IO_IN, __read_socket, handle);
+	g_io_channel_unref(ch);
+	ch = NULL;
+
+	__receiver_udp_state_set(handle, RECEIVER_UDP_STATE_READY);
+
+	return 0;
+}
+
+static int _receiver_udp_stop(void *data)
+{
+	receiver_module_h *handle = data;
+	receiver_udp_h *udp_handle = NULL;
+
+	retv_if(!handle, -1);
+
+	udp_handle = receiver_get_module_data(handle);
+
+	retv_if(!udp_handle, -1);
+	retv_if(!udp_handle->socket, -1);
+
+	if (udp_handle->state < RECEIVER_UDP_STATE_READY) {
+		_E("receiver udp is invalid state [%d]", udp_handle->state);
+		return -1;
+	}
+
+	if (udp_handle->wait_timer_id) {
+		g_source_remove(udp_handle->wait_timer_id);
+		udp_handle->wait_timer_id = 0;
+	}
+
+	if (udp_handle->io_watch_id) {
+		g_source_remove(udp_handle->io_watch_id);
+		udp_handle->io_watch_id = 0;
+	}
+
+	__receiver_udp_state_set(handle, RECEIVER_UDP_STATE_INIT);
+
+	return 0;
+}
+
+static int _receiver_udp_init(void *data)
+{
+	receiver_module_h *handle = data;
+	receiver_udp_h *udp_handle = NULL;
 	GError *error = NULL;
 	GSocketAddress *address = NULL;
 	GInetAddress *i_addr = NULL;
-	int socket_fd = 0;
-	GIOChannel *ch = NULL;
-	int ret = 0;
 
-	if (!udp_handle) {
-		ret = __receiver_udp_init();
-		if (ret)
-			return -1;
-	}
+	retv_if(!handle, -1);
 
-	if (udp_handle->state >= RECEIVER_UDP_STATE_READY) {
-		_W("receiver udp is already started");
-		return 0;
+	udp_handle = receiver_get_module_data(handle);
+	retv_if(!udp_handle, -1);
+
+	if (udp_handle->state != RECEIVER_UDP_STATE_NONE) {
+		_E("receiver udp is invalid state [%d]", udp_handle->state);
+		return -1;
 	}
 
 	udp_handle->socket = g_socket_new(G_SOCKET_FAMILY_IPV4,
@@ -287,15 +387,7 @@ int receiver_udp_start(void)
 	g_object_unref(address);
 	address = NULL;
 
-	socket_fd = g_socket_get_fd(udp_handle->socket);
-	ch = g_io_channel_unix_new(socket_fd);
-	udp_handle->io_watch_id =
-		g_io_add_watch(ch, G_IO_IN, __read_socket, udp_handle);
-	g_io_channel_unref(ch);
-	ch = NULL;
-
-	udp_handle->state = RECEIVER_UDP_STATE_READY;
-	_D("receiver udp started");
+	__receiver_udp_state_set(handle, RECEIVER_UDP_STATE_INIT);
 
 	return 0;
 
@@ -309,15 +401,77 @@ ERROR:
 	if (i_addr)
 		g_object_unref(i_addr);
 
-	__receiver_udp_fini();
-
 	return -1;
 }
 
-int receiver_udp_stop(void)
+static int _receiver_udp_fini(void *data)
 {
-	__receiver_udp_fini();
-	_D("receiver udp stopped");
+	receiver_module_h *handle = data;
+	receiver_udp_h *udp_handle = NULL;
+
+	retv_if(!handle, -1);
+
+	udp_handle = receiver_get_module_data(handle);
+	retv_if(!udp_handle, -1);
+
+	if (udp_handle) {
+		if (udp_handle->io_watch_id)
+			g_source_remove(udp_handle->io_watch_id);
+
+		if (udp_handle->wait_timer_id)
+			g_source_remove(udp_handle->wait_timer_id);
+
+		if (udp_handle->socket) {
+			g_socket_close(udp_handle->socket, NULL);
+			g_object_unref(udp_handle->socket);
+		}
+
+		__receiver_udp_state_set(handle, RECEIVER_UDP_STATE_NONE);
+
+		free(udp_handle);
+		udp_handle = NULL;
+	}
+
+	return 0;
+}
+
+static receiver_state_e _receiver_udp_get_state(void *data)
+{
+	receiver_module_h *handle = data;
+	receiver_udp_h *udp_handle = NULL;
+
+	retv_if(!handle, RECEIVER_STATE_NONE);
+
+	udp_handle = receiver_get_module_data(handle);
+	retv_if(!udp_handle, RECEIVER_STATE_NONE);
+
+	return ___state_convert(udp_handle->state);
+}
+
+/* Keep it here??? or move to new file??? */
+int receiver_udp_module_register(receiver_module_h *handle)
+{
+	receiver_udp_h *udp_handle = NULL;
+
+	retv_if(!handle, -1);
+
+	udp_handle = malloc(sizeof(receiver_udp_h));
+	if (!udp_handle) {
+		_E("failed to alloc receiver udp handle");
+		return -1;
+	}
+
+	udp_handle->state = RECEIVER_UDP_STATE_NONE;
+	udp_handle->io_watch_id = 0;
+	udp_handle->wait_timer_id = 0;
+	udp_handle->socket = NULL;
+
+	receiver_set_module_data(handle, udp_handle);
+	receiver_set_module_init_function(handle, _receiver_udp_init);
+	receiver_set_module_fini_function(handle, _receiver_udp_fini);
+	receiver_set_module_start_function(handle, _receiver_udp_start);
+	receiver_set_module_stop_function(handle, _receiver_udp_stop);
+	receiver_set_module_get_state_function(handle, _receiver_udp_get_state);
 
 	return 0;
 }
