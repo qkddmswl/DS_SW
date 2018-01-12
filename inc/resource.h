@@ -26,4 +26,6 @@
 #include "resource/resource_motor_driver_L298N.h"
 #include "resource/resource_servo_motor.h"
 
+void resource_close_all(void);
+
 #endif /* __POSITION_FINDER_RESOURCE_H__ */

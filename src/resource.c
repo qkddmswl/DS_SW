@@ -23,6 +23,8 @@
 
 #include "log.h"
 #include "resource_internal.h"
+#include "resource/resource_motor_driver_L298N_internal.h"
+#include "resource/resource_servo_motor_internal.h"
 
 static resource_s resource_info[PIN_MAX] = { {0, NULL, NULL}, };
 
