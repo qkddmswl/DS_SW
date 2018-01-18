@@ -17,12 +17,14 @@
 #ifndef __CAR_APP_RECEIVER_H__
 #define __CAR_APP_RECEIVER_H__
 
-typedef enum __receiver_type_e {
-	RECEIVER_TYPE_UDP,
-	RECEIVER_TYPE_BLUETOOTH,
-} receiver_type_e;
+#include "receiver_type.h"
 
 int receiver_init(receiver_type_e type);
-void receiver_fini(void);
+void receiver_fini(receiver_type_e type);
+int receiver_start(receiver_type_e type);
+int receiver_stop(receiver_type_e type);
+receiver_state_e receiver_get_state(receiver_type_e type);
+int receiver_set_state_changed_cb(receiver_type_e type,
+	receiver_state_changed_cb callback, void *user_data);
 
 #endif /* __CAR_APP_RECEIVER_H__ */
