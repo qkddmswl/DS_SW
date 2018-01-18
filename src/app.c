@@ -77,7 +77,7 @@ static int __map_range_val(int d_max, int d_min, int v_max, int v_min, int val)
 	double slope = 0;
 	slope = 1.0 * (d_max - d_min) / (v_max - v_min);
 
-	rval = d_min + round(slope * (val - v_min));
+	rval = d_min + __map_round(slope * (val - v_min));
 
 	return rval;
 }
