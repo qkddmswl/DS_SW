@@ -15,6 +15,7 @@ pkg_check_modules(APP_PKGS REQUIRED
 	capi-system-peripheral-io
 	glib-2.0
 	gio-2.0
+	capi-network-connection
 )
 
 FOREACH (flag ${APP_PKGS_CFLAGS})
@@ -30,7 +31,9 @@ INCLUDE_DIRECTORIES(${PROJECT_ROOT_DIR}/inc)
 ADD_EXECUTABLE(${PROJECT_NAME}
 	${PROJECT_ROOT_DIR}/src/app.c
 	${PROJECT_ROOT_DIR}/src/log.c
+	${PROJECT_ROOT_DIR}/src/connection_manager.c
 	${PROJECT_ROOT_DIR}/src/resource.c
+	${PROJECT_ROOT_DIR}/src/message.c
 	${PROJECT_ROOT_DIR}/src/receiver.c
 	${PROJECT_ROOT_DIR}/src/receiver_udp.c
 	${PROJECT_ROOT_DIR}/src/resource/resource_infrared_obstacle_avoidance_sensor.c

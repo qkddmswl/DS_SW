@@ -17,11 +17,18 @@
  */
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <unistd.h>
+#include <math.h>
 #include <glib.h>
 #include <service_app.h>
 #include "log.h"
 #include "resource.h"
+#include "receiver.h"
+#include "message.h"
+#include "connection_manager.h"
+
+#define ENABLE_MOTOR 1
 
 enum {
 	DIR_STATE_S,
@@ -33,10 +40,8 @@ typedef struct app_data_s {
 	unsigned int f_value;
 	unsigned int r_value;
 	unsigned int dir_state;
+	guint idle_h;
 } app_data;
-
-#define FRONT_PIN 21
-#define REAR_PIN 4
 
 static void service_app_lang_changed(app_event_info_h event_info, void *user_data)
 {
@@ -50,6 +55,9 @@ static void service_app_region_changed(app_event_info_h event_info, void *user_d
 
 static void service_app_low_battery(app_event_info_h event_info, void *user_data)
 {
+	_E("low battery! exit app");
+	service_app_exit();
+
 	return;
 }
 
@@ -58,107 +66,157 @@ static void service_app_low_memory(app_event_info_h event_info, void *user_data)
 	return;
 }
 
-static int __servo_motor_test(void)
+static inline double __map_round(double val)
 {
-	resource_set_motor_driver_L298N_speed(MOTOR_ID_1, 0);
-	resource_set_motor_driver_L298N_speed(MOTOR_ID_2, 0);
-	resource_set_servo_motor_value(0, 400);
-	sleep(1);
-	resource_set_servo_motor_value(0, 500);
-	sleep(1);
-	resource_set_servo_motor_value(0, 450);
-	sleep(1);
+	return floor(val + 0.5);
+}
+
+static int __map_range_val(int d_max, int d_min, int v_max, int v_min, int val)
+{
+	int rval = 0;
+	double slope = 0;
+	slope = 1.0 * (d_max - d_min) / (v_max - v_min);
+
+	rval = d_min + __map_round(slope * (val - v_min));
+
+	return rval;
+}
+
+static int ___map_speed_val(int speed)
+{
+	static const int motor_max = 4095;
+	static const int motor_min = -4095;
+	static const int speed_max = 1000;
+	static const int speed_min = -1000;
+
+	return __map_range_val(motor_max, motor_min,
+		speed_max, speed_min, speed);
+}
+
+static int ___map_servo_val(int servo)
+{
+	static const int motor_max = 500;
+	static const int motor_min = 400;
+	static const int servo_max = 1000;
+	static const int servo_min = -1000;
+
+	return __map_range_val(motor_max, motor_min,
+		servo_max, servo_min, servo);
+}
+
+
+static int __driving_motors(int servo, int speed)
+{
+	int val_speed;
+	int val_servo;
+
+	val_servo = ___map_servo_val(servo);
+	val_speed = ___map_speed_val(speed);
+
+	_D("control motor - servo[%4d : %4d], speed[%4d : %4d]",
+		servo, val_servo, speed, val_speed);
+#if ENABLE_MOTOR
+	resource_set_servo_motor_value(0, val_servo);
+	resource_set_motor_driver_L298N_speed(MOTOR_ID_1, val_speed);
+	resource_set_motor_driver_L298N_speed(MOTOR_ID_2, val_speed);
+#endif
+
 	return 0;
 }
 
-static void ___________control_motor(app_data *ad)
+static gboolean __message_dispatcher(gpointer user_data)
 {
-	_D("control motor, state(%u), f_val(%u), r_val(%u)",
-			ad->dir_state, ad->f_value, ad->r_value);
+	message_s *msg = NULL;
 
-
-	switch (ad->dir_state) {
-	case DIR_STATE_F:
-		if (ad->f_value)  {
-			if (ad->r_value) {
-				ad->dir_state = DIR_STATE_S;
-				resource_set_motor_driver_L298N_speed(MOTOR_ID_1, 0);
-				resource_set_motor_driver_L298N_speed(MOTOR_ID_2, 0);
-			} else {
-				ad->dir_state = DIR_STATE_B;
-				__servo_motor_test();
-				resource_set_motor_driver_L298N_speed(MOTOR_ID_1, -2000);
-				resource_set_motor_driver_L298N_speed(MOTOR_ID_2, -2000);
+	do {
+		msg = message_pop_from_inqueue();
+		if (msg) {
+			switch (msg->cmd) {
+			case MESSAGE_CMD_HELLO:
+				/* TODO : say hello to sender */
+				break;
+			case MESSAGE_CMD_CALIBRATION:
+				/* TODO : set calibration mode */
+				break;
+			case MESSAGE_CMD_DRIVE:
+			/* TODO : driving car */
+				__driving_motors(msg->servo, msg->speed);
+				break;
+			case MESSAGE_CMD_BYE:
+				__driving_motors(0, 0);
+				break;
 			}
 		}
-		break;
-	case DIR_STATE_B:
-		if (ad->r_value)  {
-			if (ad->f_value) {
-				ad->dir_state = DIR_STATE_S;
-				resource_set_motor_driver_L298N_speed(MOTOR_ID_1, 0);
-				resource_set_motor_driver_L298N_speed(MOTOR_ID_2, 0);
-			} else {
-				ad->dir_state = DIR_STATE_F;
-				__servo_motor_test();
-				resource_set_motor_driver_L298N_speed(MOTOR_ID_1, 2000);
-				resource_set_motor_driver_L298N_speed(MOTOR_ID_2, 2000);
-			}
+		free(msg);
+	} while (msg);
+
+	return TRUE;
+}
+
+static void __recv_state_change(receiver_type_e type,
+	receiver_state_e state, void* user_data)
+{
+	app_data *ad = user_data;
+	ret_if(!ad);
+
+	_D("receiver type[%d] state changed[%d]", type, state);
+
+	if (state == RECEIVER_STATE_CONNECTED) {
+		if (!ad->idle_h)
+			ad->idle_h = g_idle_add(__message_dispatcher, ad);
+	} else {
+		if (ad->idle_h) {
+			g_source_remove(ad->idle_h);
+			ad->idle_h = 0;
 		}
-		break;
-	case DIR_STATE_S:
-		if (!ad->f_value)  {
-			ad->dir_state = DIR_STATE_F;
-			__servo_motor_test();
-			resource_set_motor_driver_L298N_speed(MOTOR_ID_1, 2000);
-			resource_set_motor_driver_L298N_speed(MOTOR_ID_2, 2000);
-		} else if (!ad->r_value) {
-			ad->dir_state = DIR_STATE_B;
-			__servo_motor_test();
-			resource_set_motor_driver_L298N_speed(MOTOR_ID_1, -2000);
-			resource_set_motor_driver_L298N_speed(MOTOR_ID_2, -2000);
-		}
-		break;
+		__driving_motors(0, 0);
 	}
 
 	return;
 }
 
-static void _front_ioa_sensor_changed_cb(unsigned int value, void *data)
+static void __conn_state_changed_cb(connection_state_e state,
+	const char *ip, void* user_data)
 {
-	app_data *ad = data;
+	app_data *ad = user_data;
 
-	_D("FRONT has obstacle!");
+	_D("connection state changed : %d", state);
 
-	ad->f_value = value;
+	if (state == CONNECTION_STATE_CONNECTED) {
+		receiver_start(RECEIVER_TYPE_UDP);
 
-	___________control_motor(ad);
+	} else {
+		receiver_stop(RECEIVER_TYPE_UDP);
 
-	return;
-}
+		if (ad->idle_h) {
+			g_source_remove(ad->idle_h);
+			ad->idle_h = 0;
+		}
 
-static void _back_ioa_sensor_changed_cb(unsigned int value, void *data)
-{
-	app_data *ad = data;
-
-	_D("BACK has obstacle!");
-
-	ad->r_value = value;
-
-	___________control_motor(ad);
-
+		__driving_motors(0, 0);
+	}
 	return;
 }
 
 static bool service_app_create(void *data)
 {
 	int ret = 0;
+	app_data *ad = data;
+
+	receiver_init(RECEIVER_TYPE_UDP);
+	receiver_set_state_changed_cb(RECEIVER_TYPE_UDP, __recv_state_change, ad);
+
+	connection_manager_init();
+	connection_manager_set_state_changed_cb(__conn_state_changed_cb, ad);
+
+	message_queue_new();
 
 	/*
 	 * if you want to use default configuration,
 	 * Do not need to call resource_set_motor_driver_L298N_configuration(),
 	 *
 	*/
+#if ENABLE_MOTOR
 	ret = resource_set_motor_driver_L298N_configuration(MOTOR_ID_1, 19, 16, 5);
 	if (ret) {
 		_E("resource_set_motor_driver_L298N_configuration()");
@@ -169,28 +227,20 @@ static bool service_app_create(void *data)
 		_E("resource_set_motor_driver_L298N_configuration()");
 		service_app_exit();
 	}
+#endif
 
 	return true;
 }
 
 static void service_app_control(app_control_h app_control, void *data)
 {
-	app_data *ad = data;
-	int ret;
 
+#if ENABLE_MOTOR
 	/* set speed 0, to reduce delay of initializing motor driver */
 	resource_set_motor_driver_L298N_speed(MOTOR_ID_1, 0);
 	resource_set_motor_driver_L298N_speed(MOTOR_ID_2, 0);
-
-	resource_read_infrared_obstacle_avoidance_sensor(FRONT_PIN, &ad->f_value);
-	resource_read_infrared_obstacle_avoidance_sensor(REAR_PIN, &ad->r_value);
-
-	resource_set_infrared_obstacle_avoidance_sensor_interrupted_cb(FRONT_PIN,
-		_front_ioa_sensor_changed_cb, ad);
-	resource_set_infrared_obstacle_avoidance_sensor_interrupted_cb(REAR_PIN,
-		_back_ioa_sensor_changed_cb, ad);
-
-	___________control_motor(ad);
+	resource_set_servo_motor_value(0, 450);
+#endif
 
 	return;
 }
@@ -199,6 +249,14 @@ static void service_app_terminate(void *data)
 {
 	app_data *ad = data;
 
+	if (ad->idle_h)
+		g_source_remove(ad->idle_h);
+
+
+	connection_manager_fini();
+	receiver_fini(RECEIVER_TYPE_UDP);
+
+	resource_close_all();
 	log_file_close();
 
 	_D("Bye ~");
@@ -237,4 +295,3 @@ int main(int argc, char* argv[])
 
 	return 0;
 }
-
