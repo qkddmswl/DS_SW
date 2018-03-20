@@ -203,14 +203,6 @@ static bool service_app_create(void *data)
 	int ret = 0;
 	app_data *ad = data;
 
-	receiver_init(RECEIVER_TYPE_UDP);
-	receiver_set_state_changed_cb(RECEIVER_TYPE_UDP, __recv_state_change, ad);
-
-	connection_manager_init();
-	connection_manager_set_state_changed_cb(__conn_state_changed_cb, ad);
-
-	message_queue_new();
-
 	/*
 	 * if you want to use default configuration,
 	 * Do not need to call resource_set_motor_driver_L298N_configuration(),
@@ -228,6 +220,14 @@ static bool service_app_create(void *data)
 		service_app_exit();
 	}
 #endif
+
+	receiver_init(RECEIVER_TYPE_UDP);
+	receiver_set_state_changed_cb(RECEIVER_TYPE_UDP, __recv_state_change, ad);
+
+	connection_manager_init();
+	connection_manager_set_state_changed_cb(__conn_state_changed_cb, ad);
+
+	message_queue_new();
 
 	return true;
 }
