@@ -40,22 +40,15 @@ typedef struct udp_connection udp_connection_t;
 udp_connection_t *udp_connection_create(int port);
 
 /**
- * @brief Sets the receiver of sent data.
- * @param[in] connection UDP connection object.
- * @param[in] address IP address of receiver.
- * @param[in] port Port of receiver to send data on.
- * @return 0 on success, -1 otherwise.
- */
-int udp_connection_set_receiver(udp_connection_t *connection, const char *address, int port);
-
-/**
- * @brief Sends data to set receiver.
+ * @brief Sends data on given address.
  * @param[in] connection UDP connection object.
  * @param[in] data Data to be sent.
  * @param[in] size Size in bytes of data pointed by data pointer.
+ * @param[in] address IP address of receiver.
+ * @param[in] port Port of receiver.
  * @return 0 on success, -1 otherwise.
  */
-int udp_connection_send(udp_connection_t *connection, const char *data, unsigned int size);
+int udp_connection_send(udp_connection_t *connection, const char *data, unsigned short int size, const char *address, int port);
 
 /**
  * @brief Sets callback for receiving data.
