@@ -29,6 +29,7 @@ SET(CMAKE_EXE_LINKER_FLAGS "-Wl,--as-needed -pie")
 INCLUDE_DIRECTORIES(${PROJECT_ROOT_DIR}/inc)
 
 ADD_EXECUTABLE(${PROJECT_NAME}
+	${PROJECT_ROOT_DIR}/src/config.c
 	${PROJECT_ROOT_DIR}/src/app.c
 	${PROJECT_ROOT_DIR}/src/log.c
 	${PROJECT_ROOT_DIR}/src/connection_manager.c
