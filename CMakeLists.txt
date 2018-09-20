@@ -13,6 +13,8 @@ pkg_check_modules(APP_PKGS REQUIRED
 	capi-appfw-application
 	capi-appfw-service-application
 	capi-system-peripheral-io
+	libcurl
+	json-glib-1.0
 	glib-2.0
 	gio-2.0
 	capi-network-connection
@@ -42,6 +44,10 @@ ADD_EXECUTABLE(${PROJECT_NAME}
 	${PROJECT_ROOT_DIR}/src/resource/resource_motor_driver_L298N.c
 	${PROJECT_ROOT_DIR}/src/resource/resource_PCA9685.c
 	${PROJECT_ROOT_DIR}/src/resource/resource_servo_motor.c
+	${PROJECT_ROOT_DIR}/src/cloud/car_info.c
+	${PROJECT_ROOT_DIR}/src/cloud/car_info_serializer.c
+	${PROJECT_ROOT_DIR}/src/cloud/cloud_request.c
+	${PROJECT_ROOT_DIR}/src/cloud/http_request.c
 )
 
 TARGET_LINK_LIBRARIES(${PROJECT_NAME} ${pkgs_LDFLAGS} -lm)

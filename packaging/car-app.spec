@@ -20,7 +20,9 @@ BuildRequires:  pkgconfig(capi-appfw-service-application)
 BuildRequires:  pkgconfig(capi-system-peripheral-io)
 BuildRequires:  pkgconfig(gio-2.0)
 BuildRequires:  pkgconfig(glib-2.0)
-BuildRequires: pkgconfig(capi-network-connection)
+BuildRequires:  pkgconfig(json-glib-1.0)
+BuildRequires:  pkgconfig(libcurl)
+BuildRequires:  pkgconfig(capi-network-connection)
 
 %description
 Car application
