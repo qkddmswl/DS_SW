@@ -28,8 +28,15 @@
 #include "message.h"
 #include "connection_manager.h"
 #include "net-util.h"
+#include "config.h"
+#include "cloud/cloud_communication.h"
 
 #define ENABLE_MOTOR 1
+
+#define CONFIG_GRP_CAR "Car"
+#define CONFIG_KEY_ID "Id"
+#define CONFIG_KEY_NAME "Name"
+#define CLOUD_REQUESTS_FREQUENCY 15
 
 enum {
 	DIR_STATE_S,
@@ -43,6 +50,9 @@ typedef struct app_data_s {
 	unsigned int dir_state;
 	guint idle_h;
 } app_data;
+
+static void _initialize_components(app_data *ad);
+static void _initialize_config();
 
 static void service_app_lang_changed(app_event_info_h event_info, void *user_data)
 {
@@ -199,6 +209,41 @@ static void __conn_state_changed_cb(connection_state_e state,
 	return;
 }
 
+static void _initialize_config()
+{
+	config_init();
+	char *id = NULL;
+	char *name = NULL;
+	gboolean modified = false;
+	if (config_get_string(CONFIG_GRP_CAR, CONFIG_KEY_ID, &id) != 0) {
+		char *uuid = g_uuid_string_random();
+		config_set_string(CONFIG_GRP_CAR, CONFIG_KEY_ID, uuid);
+		g_free(uuid);
+		modified = true;
+	}
+	if (config_get_string(CONFIG_GRP_CAR, CONFIG_KEY_NAME, &id) != 0) {
+		config_set_string(CONFIG_GRP_CAR, CONFIG_KEY_NAME, "Passerati");
+		modified = true;
+	}
+	if (modified == true) {
+		config_save();
+	}
+	free(id);
+	free(name);
+}
+
+static void _initialize_components(app_data *ad)
+{
+	receiver_init(RECEIVER_TYPE_UDP);
+	receiver_set_state_changed_cb(RECEIVER_TYPE_UDP, __recv_state_change, ad);
+
+	connection_manager_init();
+	connection_manager_set_state_changed_cb(__conn_state_changed_cb, ad);
+	net_util_init();
+	_initialize_config();
+	cloud_communication_init();
+}
+
 static bool service_app_create(void *data)
 {
 	int ret = 0;
@@ -222,12 +267,8 @@ static bool service_app_create(void *data)
 	}
 #endif
 
-	receiver_init(RECEIVER_TYPE_UDP);
-	receiver_set_state_changed_cb(RECEIVER_TYPE_UDP, __recv_state_change, ad);
-
-	connection_manager_init();
-	connection_manager_set_state_changed_cb(__conn_state_changed_cb, ad);
-	net_util_init();
+	_initialize_components(ad);
+	cloud_communication_start(CLOUD_REQUESTS_FREQUENCY);
 
 	message_queue_new();
 
@@ -256,8 +297,12 @@ static void service_app_terminate(void *data)
 
 
 	connection_manager_fini();
-	net_util_fini();
 	receiver_fini(RECEIVER_TYPE_UDP);
+
+	cloud_communication_stop();
+	cloud_communication_fini();
+	config_shutdown();
+	net_util_fini();
 
 	resource_close_all();
 	log_file_close();

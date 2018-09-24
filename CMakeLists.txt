@@ -50,6 +50,7 @@ ADD_EXECUTABLE(${PROJECT_NAME}
 	${PROJECT_ROOT_DIR}/src/cloud/cloud_request.c
 	${PROJECT_ROOT_DIR}/src/cloud/http_request.c
 	${PROJECT_ROOT_DIR}/src/net-util.c
+	${PROJECT_ROOT_DIR}/src/cloud/cloud_communication.c
 )
 
 TARGET_LINK_LIBRARIES(${PROJECT_NAME} ${pkgs_LDFLAGS} -lm)
