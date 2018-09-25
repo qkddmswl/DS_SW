@@ -32,6 +32,19 @@ SET(CMAKE_EXE_LINKER_FLAGS "-Wl,--as-needed -pie")
 INCLUDE_DIRECTORIES(${PROJECT_ROOT_DIR}/inc)
 
 ADD_EXECUTABLE(${PROJECT_NAME}
+	${PROJECT_ROOT_DIR}/src/messages/clock.c
+	${PROJECT_ROOT_DIR}/src/messages/message_command.c
+	${PROJECT_ROOT_DIR}/src/messages/message_factory.c
+	${PROJECT_ROOT_DIR}/src/messages/writer.c
+	${PROJECT_ROOT_DIR}/src/messages/message_ack.c
+	${PROJECT_ROOT_DIR}/src/messages/message_connect_accepted.c
+	${PROJECT_ROOT_DIR}/src/messages/message_keep_alive.c
+	${PROJECT_ROOT_DIR}/src/messages/message_bye.c
+	${PROJECT_ROOT_DIR}/src/messages/message_connect.c
+	${PROJECT_ROOT_DIR}/src/messages/message_manager.c
+	${PROJECT_ROOT_DIR}/src/messages/message.c
+	${PROJECT_ROOT_DIR}/src/messages/message_connect_refused.c
+	${PROJECT_ROOT_DIR}/src/messages/reader.c
 	${PROJECT_ROOT_DIR}/src/udp_connection.c
 	${PROJECT_ROOT_DIR}/src/config.c
 	${PROJECT_ROOT_DIR}/src/app.c
