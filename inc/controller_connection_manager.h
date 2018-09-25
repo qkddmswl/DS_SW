@@ -18,7 +18,7 @@
 #define INC_CONTROLLER_CONNECTION_MANAGER_H_
 
 #include "command.h"
-
+#include "messages/message.h"
 /**
  * @brief Describes state of connection.
  */
@@ -35,18 +35,17 @@ typedef enum controller_connection_state {
 typedef void (*connection_state_cb)(controller_connection_state_e previous, controller_connection_state_e current);
 
 /**
- * @brief Called whenever new message arrives.
+ * @brief Called whenever new command arrives.
  * @param[in] message Message tat arrived.
  */
-typedef void (*message_received_cb)(command_s command);
+typedef void (*command_received_cb)(command_s command);
 
 /**
  * @brief Starts listening on the given port for messages.
- * @param[in] port Port on which application will be listening.
  * @return 0 on success, -1 otherwise.
  * @remarks This function allocates resources and that has to be freed with controller_connection_manager_release.
  */
-int controller_connection_manager_listen(int port);
+int controller_connection_manager_listen();
 
 /**
  * @brief Gets currect connection state.
@@ -58,13 +57,19 @@ controller_connection_state_e controller_connection_manager_get_state();
  * @brief Sets callback function called whenever connection state changes.
  * @param[in] callback Callback function to be set.
  */
-void controller_connection_set_manager_state_change_cb(connection_state_cb callback);
+void controller_connection_manager_set_state_change_cb(connection_state_cb callback);
+
+/**
+ * @brief Handles arriving message.
+ * @param[in] message Message to handle
+ */
+void controller_connection_manager_handle_message(message_t *message);
 
 /**
  * @brief Sets callback function called whenever new message arrives.
  * @param[in] callback Callback function to be set.
  */
-void controller_connection_manager_set_message_received_cb(message_received_cb callback);
+void controller_connection_manager_set_command_received_cb(command_received_cb callback);
 
 /**
  * @brief Stops listening for messages and release resources connected with it.

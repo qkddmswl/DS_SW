@@ -35,6 +35,7 @@ ADD_EXECUTABLE(${PROJECT_NAME}
 	${PROJECT_ROOT_DIR}/src/messages/clock.c
 	${PROJECT_ROOT_DIR}/src/messages/message_command.c
 	${PROJECT_ROOT_DIR}/src/messages/message_factory.c
+	${PROJECT_ROOT_DIR}/src/controller_connection_manager.c
 	${PROJECT_ROOT_DIR}/src/messages/writer.c
 	${PROJECT_ROOT_DIR}/src/messages/message_ack.c
 	${PROJECT_ROOT_DIR}/src/messages/message_connect_accepted.c
