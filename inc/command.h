@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#ifndef COMMAND_H_
+#define COMMAND_H_
 
 /**
  * @brief Types of commands used in communication.
@@ -40,3 +42,5 @@ typedef struct __command {
 		} camera_position;
 	} data;
 } command_s;
+
+#endif //COMMAND_H_
