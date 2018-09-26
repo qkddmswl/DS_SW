@@ -60,6 +60,23 @@ void message_command_destroy(message_command_t *message)
 
 static int _camera_command_deserialize(command_s *cmd, reader_t *reader)
 {
+	int32_t elevation, azimuth;
+	int err = 0;
+
+	err |= reader_read_int32(reader, &elevation);
+	err |= reader_read_int32(reader, &azimuth);
+
+	if (err) return err;
+
+	cmd->data.camera_position.camera_elevation = elevation;
+	cmd->data.camera_position.camera_azimuth = azimuth;
+
+	return 0;
+}
+
+static int _drive_command_deserialize(command_s *cmd, reader_t *reader)
+{
+
 	int32_t speed, dir;
 	int err = 0;
 
@@ -74,18 +91,24 @@ static int _camera_command_deserialize(command_s *cmd, reader_t *reader)
 	return 0;
 }
 
-static int _drive_command_deserialize(command_s *cmd, reader_t *reader)
+static int _drive_and_camera_command_deserialize(command_s *cmd, reader_t *reader)
 {
+
+	int32_t speed, dir;
 	int32_t elevation, azimuth;
 	int err = 0;
 
+	err |= reader_read_int32(reader, &speed);
+	err |= reader_read_int32(reader, &dir);
 	err |= reader_read_int32(reader, &elevation);
 	err |= reader_read_int32(reader, &azimuth);
 
 	if (err) return err;
 
-	cmd->data.camera_position.camera_elevation = elevation;
-	cmd->data.camera_position.camera_azimuth = azimuth;
+	cmd->data.steering_and_camera.speed = speed;
+	cmd->data.steering_and_camera.direction = dir;
+	cmd->data.steering_and_camera.camera_elevation = elevation;
+	cmd->data.steering_and_camera.camera_azimuth = azimuth;
 
 	return 0;
 }
@@ -106,6 +129,9 @@ static int _command_deserialize(command_s *cmd, reader_t *reader)
 		case COMMAND_TYPE_CAMERA:
 			return _camera_command_deserialize(cmd, reader);
 			break;
+		case COMMAND_TYPE_DRIVE_AND_CAMERA:
+			return _drive_and_camera_command_deserialize(cmd, reader);
+			break;
 		case COMMAND_TYPE_NONE:
 			return 0;
 		default:
@@ -114,6 +140,18 @@ static int _command_deserialize(command_s *cmd, reader_t *reader)
 }
 
 static int _camera_command_serialize(command_s *cmd, writer_t *writer)
+{
+	int32_t elevation = cmd->data.camera_position.camera_elevation;
+	int32_t azimuth = cmd->data.camera_position.camera_azimuth;
+	int err = 0;
+
+	err |= writer_write_int32(writer, elevation);
+	err |= writer_write_int32(writer, azimuth);
+
+	return err;
+}
+
+static int _drive_command_serialize(command_s *cmd, writer_t *writer)
 {
 	int32_t speed = cmd->data.steering.speed;
 	int32_t dir = cmd->data.steering.direction;
@@ -125,12 +163,16 @@ static int _camera_command_serialize(command_s *cmd, writer_t *writer)
 	return err;
 }
 
-static int _drive_command_serialize(command_s *cmd, writer_t *writer)
+static int _drive_and_camera_command_serialize(command_s *cmd, writer_t *writer)
 {
-	int32_t elevation = cmd->data.camera_position.camera_elevation;
-	int32_t azimuth = cmd->data.camera_position.camera_azimuth;
+	int32_t speed = cmd->data.steering_and_camera.speed;
+	int32_t dir = cmd->data.steering_and_camera.direction;
+	int32_t elevation = cmd->data.steering_and_camera.camera_elevation;
+	int32_t azimuth = cmd->data.steering_and_camera.camera_azimuth;
 	int err = 0;
 
+	err |= writer_write_int32(writer, speed);
+	err |= writer_write_int32(writer, dir);
 	err |= writer_write_int32(writer, elevation);
 	err |= writer_write_int32(writer, azimuth);
 
@@ -150,6 +192,9 @@ static int _command_serialize(command_s *cmd, writer_t *writer)
 			return _drive_command_serialize(cmd, writer);
 		case COMMAND_TYPE_CAMERA:
 			return _camera_command_serialize(cmd, writer);
+			break;
+		case COMMAND_TYPE_DRIVE_AND_CAMERA:
+			return _drive_and_camera_command_serialize(cmd, writer);
 			break;
 		case COMMAND_TYPE_NONE:
 			return 0;

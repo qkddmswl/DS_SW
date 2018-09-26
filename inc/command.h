@@ -23,7 +23,8 @@
 typedef enum command_type {
 	COMMAND_TYPE_NONE, /** Command doesn't carry any information */
 	COMMAND_TYPE_DRIVE, /** Command carries information about steering included in data.steering. */
-	COMMAND_TYPE_CAMERA /** Command carries information about camera position in data.camera_position. */
+	COMMAND_TYPE_CAMERA, /** Command carries information about camera position in data.camera_position. */
+	COMMAND_TYPE_DRIVE_AND_CAMERA /** Command carries information about both camera position and steering in data.steering_and_camera. */
 } command_type_e;
 
 /**
@@ -40,6 +41,12 @@ typedef struct __command {
 			int camera_elevation; /** Elevation of camera to be set from range [-10000, 10000]. */
 			int camera_azimuth; /** Azimuth of camera to be set from range [-10000, 10000]. */
 		} camera_position;
+		struct {
+			int speed; /** Speed to be set from range [-10000, 10000]. */
+			int direction; /** Direction to be set from range [-10000, 10000]. */
+			int camera_elevation; /** Elevation of camera to be set from range [-10000, 10000]. */
+			int camera_azimuth; /** Azimuth of camera to be set from range [-10000, 10000]. */
+		} steering_and_camera;
 	} data;
 } command_s;
 
