@@ -18,6 +18,7 @@ pkg_check_modules(APP_PKGS REQUIRED
 	glib-2.0
 	gio-2.0
 	capi-network-connection
+	capi-network-wifi-manager
 )
 
 FOREACH (flag ${APP_PKGS_CFLAGS})
@@ -48,6 +49,7 @@ ADD_EXECUTABLE(${PROJECT_NAME}
 	${PROJECT_ROOT_DIR}/src/cloud/car_info_serializer.c
 	${PROJECT_ROOT_DIR}/src/cloud/cloud_request.c
 	${PROJECT_ROOT_DIR}/src/cloud/http_request.c
+	${PROJECT_ROOT_DIR}/src/net-util.c
 )
 
 TARGET_LINK_LIBRARIES(${PROJECT_NAME} ${pkgs_LDFLAGS} -lm)

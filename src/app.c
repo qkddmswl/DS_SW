@@ -27,6 +27,7 @@
 #include "receiver.h"
 #include "message.h"
 #include "connection_manager.h"
+#include "net-util.h"
 
 #define ENABLE_MOTOR 1
 
@@ -139,7 +140,7 @@ static gboolean __message_dispatcher(gpointer user_data)
 				/* TODO : set calibration mode */
 				break;
 			case MESSAGE_CMD_DRIVE:
-			/* TODO : driving car */
+				/* TODO : driving car */
 				__driving_motors(msg->servo, msg->speed);
 				break;
 			case MESSAGE_CMD_BYE:
@@ -226,6 +227,7 @@ static bool service_app_create(void *data)
 
 	connection_manager_init();
 	connection_manager_set_state_changed_cb(__conn_state_changed_cb, ad);
+	net_util_init();
 
 	message_queue_new();
 
@@ -254,6 +256,7 @@ static void service_app_terminate(void *data)
 
 
 	connection_manager_fini();
+	net_util_fini();
 	receiver_fini(RECEIVER_TYPE_UDP);
 
 	resource_close_all();

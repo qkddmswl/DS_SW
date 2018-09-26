@@ -23,6 +23,7 @@ BuildRequires:  pkgconfig(glib-2.0)
 BuildRequires:  pkgconfig(json-glib-1.0)
 BuildRequires:  pkgconfig(libcurl)
 BuildRequires:  pkgconfig(capi-network-connection)
+BuildRequires:  pkgconfig(capi-network-wifi-manager)
 
 %description
 Car application
