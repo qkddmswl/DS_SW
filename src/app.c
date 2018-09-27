@@ -30,6 +30,9 @@
 #include "net-util.h"
 #include "config.h"
 #include "cloud/cloud_communication.h"
+#include "messages/message_manager.h"
+#include "controller_connection_manager.h"
+#include "command.h"
 
 #define ENABLE_MOTOR 1
 
@@ -164,26 +167,29 @@ static gboolean __message_dispatcher(gpointer user_data)
 	return TRUE;
 }
 
-static void __recv_state_change(receiver_type_e type,
-	receiver_state_e state, void* user_data)
+static void __camera(int azimuth, int elevation)
 {
-	app_data *ad = user_data;
-	ret_if(!ad);
+	//TODO: Camera steering
+}
 
-	_D("receiver type[%d] state changed[%d]", type, state);
-
-	if (state == RECEIVER_STATE_CONNECTED) {
-		if (!ad->idle_h)
-			ad->idle_h = g_idle_add(__message_dispatcher, ad);
-	} else {
-		if (ad->idle_h) {
-			g_source_remove(ad->idle_h);
-			ad->idle_h = 0;
-		}
-		__driving_motors(0, 0);
+static void __command_received_cb(command_s command) {
+	switch(command.type) {
+	case COMMAND_TYPE_DRIVE:
+		__driving_motors(command.data.steering.direction, command.data.steering.speed);
+		break;
+	case COMMAND_TYPE_CAMERA:
+		__camera(command.data.camera_position.camera_azimuth, command.data.camera_position.camera_elevation);
+		break;
+	case COMMAND_TYPE_DRIVE_AND_CAMERA:
+		__driving_motors(command.data.steering_and_camera.direction, command.data.steering_and_camera.speed);
+		__camera(command.data.steering_and_camera.camera_azimuth, command.data.steering_and_camera.camera_elevation);
+		break;
+	case COMMAND_TYPE_NONE:
+		break;
+	default:
+		_E("Unknown command type");
+		break;
 	}
-
-	return;
 }
 
 static void __conn_state_changed_cb(connection_state_e state,
@@ -234,14 +240,11 @@ static void _initialize_config()
 
 static void _initialize_components(app_data *ad)
 {
-	receiver_init(RECEIVER_TYPE_UDP);
-	receiver_set_state_changed_cb(RECEIVER_TYPE_UDP, __recv_state_change, ad);
-
-	connection_manager_init();
-	connection_manager_set_state_changed_cb(__conn_state_changed_cb, ad);
 	net_util_init();
 	_initialize_config();
 	cloud_communication_init();
+	message_manager_init();
+	controller_connection_manager_listen();
 }
 
 static bool service_app_create(void *data)
@@ -270,7 +273,7 @@ static bool service_app_create(void *data)
 	_initialize_components(ad);
 	cloud_communication_start(CLOUD_REQUESTS_FREQUENCY);
 
-	message_queue_new();
+	controller_connection_manager_set_command_received_cb(__command_received_cb);
 
 	return true;
 }
@@ -296,8 +299,8 @@ static void service_app_terminate(void *data)
 		g_source_remove(ad->idle_h);
 
 
-	connection_manager_fini();
-	receiver_fini(RECEIVER_TYPE_UDP);
+	controller_connection_manager_release();
+	message_manager_shutdown();
 
 	cloud_communication_stop();
 	cloud_communication_fini();
