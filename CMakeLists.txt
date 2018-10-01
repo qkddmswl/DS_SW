@@ -50,11 +50,7 @@ ADD_EXECUTABLE(${PROJECT_NAME}
 	${PROJECT_ROOT_DIR}/src/config.c
 	${PROJECT_ROOT_DIR}/src/app.c
 	${PROJECT_ROOT_DIR}/src/log.c
-	${PROJECT_ROOT_DIR}/src/connection_manager.c
 	${PROJECT_ROOT_DIR}/src/resource.c
-	${PROJECT_ROOT_DIR}/src/message.c
-	${PROJECT_ROOT_DIR}/src/receiver.c
-	${PROJECT_ROOT_DIR}/src/receiver_udp.c
 	${PROJECT_ROOT_DIR}/src/resource/resource_infrared_obstacle_avoidance_sensor.c
 	${PROJECT_ROOT_DIR}/src/resource/resource_motor_driver_L298N.c
 	${PROJECT_ROOT_DIR}/src/resource/resource_PCA9685.c

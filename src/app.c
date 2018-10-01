@@ -24,9 +24,6 @@
 #include <service_app.h>
 #include "log.h"
 #include "resource.h"
-#include "receiver.h"
-#include "message.h"
-#include "connection_manager.h"
 #include "net-util.h"
 #include "config.h"
 #include "cloud/cloud_communication.h"
@@ -118,7 +115,6 @@ static int ___map_servo_val(int servo)
 		servo_max, servo_min, servo);
 }
 
-
 static int __driving_motors(int servo, int speed)
 {
 	int val_speed;
@@ -136,35 +132,6 @@ static int __driving_motors(int servo, int speed)
 #endif
 
 	return 0;
-}
-
-static gboolean __message_dispatcher(gpointer user_data)
-{
-	message_s *msg = NULL;
-
-	do {
-		msg = message_pop_from_inqueue();
-		if (msg) {
-			switch (msg->cmd) {
-			case MESSAGE_CMD_HELLO:
-				/* TODO : say hello to sender */
-				break;
-			case MESSAGE_CMD_CALIBRATION:
-				/* TODO : set calibration mode */
-				break;
-			case MESSAGE_CMD_DRIVE:
-				/* TODO : driving car */
-				__driving_motors(msg->servo, msg->speed);
-				break;
-			case MESSAGE_CMD_BYE:
-				__driving_motors(0, 0);
-				break;
-			}
-		}
-		free(msg);
-	} while (msg);
-
-	return TRUE;
 }
 
 static void __camera(int azimuth, int elevation)
@@ -192,32 +159,10 @@ static void __command_received_cb(command_s command) {
 	}
 }
 
-static void __conn_state_changed_cb(connection_state_e state,
-	const char *ip, void* user_data)
-{
-	app_data *ad = user_data;
-
-	_D("connection state changed : %d", state);
-
-	if (state == CONNECTION_STATE_CONNECTED) {
-		receiver_start(RECEIVER_TYPE_UDP);
-
-	} else {
-		receiver_stop(RECEIVER_TYPE_UDP);
-
-		if (ad->idle_h) {
-			g_source_remove(ad->idle_h);
-			ad->idle_h = 0;
-		}
-
-		__driving_motors(0, 0);
-	}
-	return;
-}
-
 static void _initialize_config()
 {
 	config_init();
+
 	char *id = NULL;
 	char *name = NULL;
 	gboolean modified = false;

@@ -22,7 +22,6 @@
 #include "cloud/cloud_request.h"
 #include "log.h"
 #include "config.h"
-#include "connection_manager.h"
 #include "net-util.h"
 
 typedef struct communication_data_ {
